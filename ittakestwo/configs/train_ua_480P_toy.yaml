@@ -1,0 +1,188 @@
+expname: image2video-ua
+task: sft:imageaction2video
+base_config: null
+collate_fn: ittakestwo.dataset.collate_functions.action2video_concatview_collate_fn
+dataset_config:
+  target: dataset.IttakestwoVideoActionDataset
+  params:
+    base_path: data/ittakestwo_release/480P_toy
+    metadata_path: data/ittakestwo_release/480P_toy/metadata/train_metadata.csv
+    video_params:
+      frame_skip: 1
+      height: 480
+      width: 960
+      num_frames: 81
+      time_division_factor: 4
+      time_division_remainder: 1
+    max_entries: 1280000
+    return_video_type: tensor
+    return_view: random
+    data_file_keys:
+    - video
+    - env_obv
+    - discrete_action
+    - continuous_action
+    action_config:
+      discrete_action_keys:
+      - w
+      - a
+      - s
+      - d
+      - space
+      - shift
+      - ctrl
+      - e
+      - q
+      - f
+      - button_0
+      - button_1
+      - button_2
+      - button_3
+      - button_4
+      - button_5
+      - button_8
+      - button_9
+      continuous_action_keys:
+      - norm_dx
+      - norm_dy
+      - axis_0
+      - axis_1
+      - axis_2
+      - axis_3
+    repeat: 1
+    load_from_cache: false
+    random_start_point: true
+    convert_gamepad_to_keyboard: true
+    lazy_load_action: true
+    stick_threshold: 0.3
+eval_dataset_config:
+  target: dataset.IttakestwoVideoActionDataset
+  params:
+    base_path: data/ittakestwo_release/480P_toy
+    metadata_path: data/ittakestwo_release/480P_toy/metadata/val_metadata.csv
+    video_params:
+      frame_skip: 1
+      height: 480
+      width: 960
+      num_frames: 81
+      time_division_factor: 4
+      time_division_remainder: 1
+    return_video_type: pil
+    return_view: random
+    load_action: true
+    action_config:
+      discrete_action_keys:
+      - w
+      - a
+      - s
+      - d
+      - space
+      - shift
+      - ctrl
+      - e
+      - q
+      - f
+      - button_0
+      - button_1
+      - button_2
+      - button_3
+      - button_4
+      - button_5
+      - button_8
+      - button_9
+      continuous_action_keys:
+      - norm_dx
+      - norm_dy
+      - axis_0
+      - axis_1
+      - axis_2
+      - axis_3
+    random_start_point: false
+    repeat: 1
+    load_from_cache: false
+    data_file_keys:
+    - video
+    - env_obv
+    - discrete_action
+    - continuous_action
+    convert_gamepad_to_keyboard: true
+    lazy_load_action: false
+    stick_threshold: 0.3
+simulator_config:
+  load_env_encoder: true
+  env_encoder_config:
+    target: diffsynth.models.wan_env_encoder.WanEnvEncoder
+    params:
+      input_dim: 2048
+      output_dim: 3072
+  dit_config:
+    target: diffsynth.models.wan_video_dit.WanModel
+    model_path:
+    - ./models/Wan-AI/Wan2.2-TI2V-5B/diffusion_pytorch_model-00001-of-00003.safetensors
+    - ./models/Wan-AI/Wan2.2-TI2V-5B/diffusion_pytorch_model-00002-of-00003.safetensors
+    - ./models/Wan-AI/Wan2.2-TI2V-5B/diffusion_pytorch_model-00003-of-00003.safetensors
+    params:
+      action_injection: bidi_cross_attention
+      action_encoder_config:
+        target: diffsynth.models.wan_video_ittakestwo_action.WanActionEncoder
+        params:
+          discrete_dim: 10
+          continuous_dim: 2
+          output_dim: ${simulator_config.dit_config.params.dim}
+          output_ratio: 1
+          adaptive_agent_pooling: true
+          action_pe_config:
+            qk_norm: false
+            dim: ${simulator_config.dit_config.params.dim}
+            pe_type: relative1d
+            num_heads: 8
+            base_n: 2
+            max_n: 8
+            max_f: 252
+      has_image_input: false
+      has_context_input: true
+      patch_size:
+      - 1
+      - 2
+      - 2
+      in_dim: 48
+      dim: 3072
+      ffn_dim: 14336
+      freq_dim: 256
+      text_dim: 4096
+      out_dim: 48
+      num_heads: 24
+      num_layers: 30
+      eps: 1.0e-06
+      seperated_timestep: true
+      require_clip_embedding: false
+      require_vae_embedding: false
+      fuse_vae_embedding_in_latents: true
+inference_config:
+  method: standard
+  num_inference_steps: 35
+  guidance_scale: 1.0
+  sigma_shift: 5.0
+trainer_config:
+  learning_rate: 0.0001
+  batch_size: 4
+  num_epochs: 20
+  save_steps: 2000
+  find_unused_parameters: false
+  gradient_accumulation_steps: 1
+  dataset_num_workers: 16
+  validation_interval: 1000
+  optimizer_config:
+    target_class: torch.optim.AdamW
+    optimizer_state_path: null
+    params:
+      lr: ${trainer_config.learning_rate}
+      betas:
+      - 0.9
+      - 0.999
+      weight_decay: 0.01
+  scheduler_config:
+    target_class: torch.optim.lr_scheduler.CosineAnnealingLR
+    params:
+      T_max: 10000
+      eta_min: 1.0e-05
