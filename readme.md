@@ -6,8 +6,11 @@
 <img src='https://img.shields.io/badge/arxiv-multiworld-darkred' alt='Paper PDF'></a>
 <a href="https://Multi-World.github.io/">
 <img src='https://img.shields.io/badge/Project-Website-orange' alt='Project Page'></a>
-<https://huggingface.co/Haoyuwu/MultiWorldData>
-<https://modelscope.cn/datasets/HaoyuWuRUC/MultiWorldData>
+
+<a href="https://huggingface.co/datasets/Haoyuwu/MultiWorldData">
+<img src='https://img.shields.io/badge/HuggingFace-Dataset-yellow?logo=huggingface' alt='HuggingFace Dataset'></a>
+<a href="https://modelscope.cn/datasets/HaoyuWuRUC/MultiWorldData">
+<img src='https://img.shields.io/badge/ModelScope-Dataset-blue' alt='ModelScope Dataset'></a>
 
 [Haoyu Wu](https://cintellifusion.github.io/)$^{1*}$, [Jiwen Yu](https://yujiwen.github.io/) $^{1}$, [Yingtian Zou](https://scholar.google.com/citations?user=APA-glsAAAAJ&hl=en)$^{2}$, [Xihui Liu](https://xh-liu.github.io/) $^{1}†$
 
