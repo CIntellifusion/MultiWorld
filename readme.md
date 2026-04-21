@@ -2,7 +2,7 @@
 <div align="center">
 
 <h1>MultiWorld: Scalable Multi-Agent Multi-View Video World Models </h1>
-<a href="https://www.arxiv.org/abs/">
+<a href="https://arxiv.org/abs/2604.18564">
 <img src='https://img.shields.io/badge/arxiv-multiworld-darkred' alt='Paper PDF'></a>
 <a href="https://Multi-World.github.io/">
 <img src='https://img.shields.io/badge/Project-Website-orange' alt='Project Page'></a>
@@ -147,7 +147,7 @@ If you find our work useful for your research, please consider citing our paper:
 @article{wu2025multiworld,
   title={MultiWorld: Scalable Multi-Agent Multi-View Video World Models},
   author={Wu, Haoyu and Yu, Jiwen and Zou, Yingtian and Liu, Xihui},
-  journal={arXiv preprint arXiv:xxxx.xxxxx},
+  journal={arXiv preprint arXiv:2604.18564},
   year={2026}
 }
 ```
