@@ -5,8 +5,8 @@ base_config: null
 dataset_config:
   target: dataset.robots_dataset.RobotsSimulationDataset
   params:
-    base_path: /haoyu/research/XVideo7B/MultiAgentSimul/pfsator-MC/MultiAgentSimulator/Robo/RoboFactory/robofactory_v3_refactored
-    metadata_path: /pfs/haoyu/research/XVideo7B/ItTakesTwoSimulator/data/robofactory_v3_refactored/metadata-0203/train_metadata.csv
+    base_path: data/robots_release
+    metadata_path: data/robots_release/metadata/train_metadata.csv
     video_params:
       height: 256
       width: 320
