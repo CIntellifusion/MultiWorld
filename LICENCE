@@ -1,0 +1,57 @@
+================================================================================
+                              MultiWorld License
+================================================================================
+
+This repository contains both software code and data/assets. Different license
+terms apply to each component as described below.
+
+--------------------------------------------------------------------------------
+1. CODE LICENSE (Apache-2.0)
+--------------------------------------------------------------------------------
+
+Copyright (c) [2026] [Haoyu Wu]
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use the code except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Code includes: source files, scripts, build configurations, and tooling
+in this repository.
+
+--------------------------------------------------------------------------------
+2. DATA & MODEL WEIGHTS LICENSE (CC BY-NC 4.0)
+--------------------------------------------------------------------------------
+
+MultiWorld Data © [2026] by [HKU & Sreal AI] is licensed under
+Creative Commons Attribution-NonCommercial 4.0 International.
+
+You are free to:
+    - Share: copy and redistribute the data in any medium or format
+    - Adapt: remix, transform, and build upon the data
+
+Under the following terms:
+    - Attribution: You must give appropriate credit, provide a link to the
+      license, and indicate if changes were made.
+    - NonCommercial: You may not use the material for commercial purposes.
+
+Full license text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+Data includes: datasets, model checkpoints, pre-trained weights, and
+accompanying documentation.
+
+--------------------------------------------------------------------------------
+3. COMMERCIAL LICENSING
+--------------------------------------------------------------------------------
+
+For commercial use of the data or model weights, please contact:
+    [wuhaoyu556@connect.hku.hk]
+
+================================================================================
