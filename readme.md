@@ -170,8 +170,8 @@ Welcome to have a discussion on the project and Video World Models. You can find
 
 This repository contains both software code and data/assets under separate licenses:
 
-- **Code** (training scripts, models, inference tools): Licensed under [Apache-2.0](LICENSE). Free for research and commercial use.
-- **Data & Model Weights** (datasets, checkpoints, pre-trained weights): Licensed under [CC BY-NC 4.0](LICENSE).
+- **Code** (training scripts, models, inference tools): Licensed under [Apache-2.0](LICENCE). Free for research and commercial use.
+- **Data & Model Weights** (datasets, checkpoints, pre-trained weights): Licensed under [CC BY-NC 4.0](LICENCE).
   - ✅ **Allowed**: Academic research, education, non-commercial projects
   - ❌ **Prohibited**: Commercial products, cloud API services, integration into revenue-generating applications
   - 📧 **Commercial licensing**: Contact wuhaoyu556@connect.hku.hk
