@@ -11,6 +11,8 @@
 <img src='https://img.shields.io/badge/HuggingFace-Dataset-yellow?logo=huggingface' alt='HuggingFace Dataset'></a>
 <a href="https://modelscope.cn/datasets/HaoyuWuRUC/MultiWorldData">
 <img src='https://img.shields.io/badge/ModelScope-Dataset-blue' alt='ModelScope Dataset'></a>
+<a href="https://github.com/CIntellifusion/MultiWorld">
+<img src='https://img.shields.io/badge/GitHub-Code-black?logo=github' alt='GitHub Code'></a>
 
 [Haoyu Wu](https://cintellifusion.github.io/)$^{1*}$, [Jiwen Yu](https://yujiwen.github.io/) $^{1}$, [Yingtian Zou](https://scholar.google.com/citations?user=APA-glsAAAAJ&hl=en)$^{2}$, [Xihui Liu](https://xh-liu.github.io/) $^{1}†$
 
@@ -32,6 +34,7 @@ In the Multi-Agent Condition Module (Sec. 3.2), Agent Identity Embedding and Ada
 
 ## 🚀 News
 
+- [2026/5/11] Training code available. Long-term inference Code available.
 - [2026/4/21] Paper,code,data and project page are available. Welcome to have a try. 
 
 
@@ -93,9 +96,25 @@ hf download Haoyuwu/MultiWorldCheckpoint multiworld_480p_toydata.safetensors --l
 hf download Haoyuwu/MultiWorldCheckpoint multiworld_320p_robots.safetensors --local-dir ./checkpoints --repo-type model
 ```
 
+## Training
+
+To train MultiWorld on the full It Takes Two dataset:
+
+```shell
+bash ittakestwo/scripts/train.sh ittakestwo/configs/train_ua_480P_toy.yaml train_480P
+```
+
+- `config_path`: Path to the training config (e.g., `train_ua_480P_toy.yaml` for 480p two-agent setting).
+- `output_path`: Experiment outputs (checkpoints, logs, eval videos) are saved to `outputs/<EXP_NAME>/`.
+- The script uses `accelerate launch` for distributed training. Adjust `nproc_per_node` in your `accelerate` config as needed.
+
 ## Inference
 
-Inference checkpoint trained on full dataset. 
+For non-autoregressive inference, left/right view videos are **automatically concatenated** side-by-side after generation. The `gen/` and `gt/` directories will already contain the final concatenated outputs when inference finishes.
+
+### It Takes Two
+
+Inference checkpoint trained on full dataset:
 ```shell
 python -m torch.distributed.run --nproc_per_node=8 \
     ittakestwo/parallel_inference.py \
@@ -106,8 +125,7 @@ python -m torch.distributed.run --nproc_per_node=8 \
     --output-dir outputs/eval_480P_full 
 ```
 
-Inference checkpoint trained on toy dataset. 
-
+Inference checkpoint trained on toy dataset:
 ```shell
 python -m torch.distributed.run --nproc_per_node=8 \
     ittakestwo/parallel_inference.py \
@@ -118,10 +136,20 @@ python -m torch.distributed.run --nproc_per_node=8 \
     --output-dir outputs/eval_480P_toy
 ```
 
-## Robotics
+Inference on long video-action dataset (autoregressive):
+```shell
+python -m torch.distributed.run --nproc_per_node=8 \
+      ittakestwo/parallel_inference.py \
+      --inference-mode autoregressive \
+      --num-chunks 3 \
+      --config-path ittakestwo/configs/inference_480P_full_long.yaml \
+      --model-path checkpoints/multiworld_480p_fulldata.safetensors \
+      --output-dir outputs/autoregressive_longvideo
+```
 
-Inference on robotics dataset.
+### Robotics
 
+Inference on robotics dataset:
 ```shell
 python -m torch.distributed.run --nproc_per_node=8 \
     robots/parallel_inference.py \
@@ -130,9 +158,8 @@ python -m torch.distributed.run --nproc_per_node=8 \
     --output-dir outputs/test_robotics_output 
 ```
 
-
 ## Acknowledgements
-This codebase is built on top of the open-source implementation of [DiffSynth-Studio](https://github.com/modelscope/diffsynth-studio), [VGGT](https://github.com/facebookresearch/vggt) and the [Wan2.2](https://github.com/Wan-Video/Wan2.2) repo.
+This codebase is built on top of the open-source implementation of [DiffSynth-Studio](https://github.com/modelscope/diffsynth-studio), [VGGT](https://github.com/facebookresearch/vggt), [RoboFactory](https://github.com/MARS-EAI/RoboFactory) and the [Wan2.2](https://github.com/Wan-Video/Wan2.2) repo.
 
 
 ## Contact

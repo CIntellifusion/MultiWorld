@@ -4,10 +4,11 @@ import torch, types
 import numpy as np
 from PIL import Image
 from einops import repeat,rearrange
-from typing import Optional, Union
+from typing import Optional, Union, List
 from tqdm import tqdm
 from typing import Optional
 from typing_extensions import Literal
+from torchvision import transforms as TF
 from diffsynth.core.loader.file import load_state_dict 
 from diffsynth.models.wan_env_encoder import WanEnvEncoder 
 from utils.import_utils import instantiate_from_config
@@ -216,15 +217,9 @@ class WanVideoPipeline(BasePipeline):
         self.load_models_to_device(self.in_iteration_models)
         models = {name: getattr(self, name) for name in self.in_iteration_models}
         for progress_id, timestep in enumerate(progress_bar_cmd(self.scheduler.timesteps)):
-            # Switch DiT removed 
-            # Timestep
-            # Inference
             noise_pred = self.model_fn(self.config,**models, **inputs_shared, **inputs_posi, timestep=timestep)
-            # No prompt since no cfg 
-            # Scheduler
             inputs_shared["latents"] = self.scheduler.step(noise_pred, self.scheduler.timesteps[progress_id], inputs_shared["latents"])
             if "first_frame_latents" in inputs_shared:
-                # Preserve the first-frame latents.
                 inputs_shared["latents"][:, :, 0:1] = inputs_shared["first_frame_latents"]
         
         # post-denoising, pre-decoding processing logic
@@ -287,6 +282,174 @@ class WanVideoPipeline(BasePipeline):
         if isinstance(action, dict):
             return {k: WanVideoPipeline._make_null_action(v) for k, v in action.items()}
         return action
+
+    # ------------------------------------------------------------------
+    # Autoregressive inference helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def preprocess_pil_for_vggt(pil_image: Image.Image, target_size: int = 224) -> torch.Tensor:
+        """Preprocess a PIL image for VGGT input (same logic as load_and_preprocess_images with mode='pad')."""
+        img = pil_image.convert("RGB")
+        width, height = img.size
+
+        if width >= height:
+            new_width = target_size
+            new_height = round(height * (new_width / width) / 14) * 14
+        else:
+            new_height = target_size
+            new_width = round(width * (new_height / height) / 14) * 14
+
+        img = img.resize((new_width, new_height), Image.Resampling.BICUBIC)
+        to_tensor = TF.ToTensor()
+        img_tensor = to_tensor(img)  # (3, H, W), [0, 1]
+
+        h_padding = target_size - img_tensor.shape[1]
+        w_padding = target_size - img_tensor.shape[2]
+        if h_padding > 0 or w_padding > 0:
+            pad_top = h_padding // 2
+            pad_bottom = h_padding - pad_top
+            pad_left = w_padding // 2
+            pad_right = w_padding - pad_left
+            img_tensor = torch.nn.functional.pad(
+                img_tensor, (pad_left, pad_right, pad_top, pad_bottom),
+                mode="constant", value=1.0,
+            )
+        return img_tensor
+
+    def _build_env_obv_from_pil(self, left_frame, right_frame) -> torch.Tensor:
+        """Build env_obv tensor from PIL/numpy frames of left and right views.
+
+        Returns shape [B=1, F=1, K=2, C=3, H, W] matching WanEnvEncoder.forward input.
+        """
+        if isinstance(left_frame, np.ndarray):
+            left_frame = Image.fromarray(left_frame)
+        if isinstance(right_frame, np.ndarray):
+            right_frame = Image.fromarray(right_frame)
+
+        left_tensor = self.preprocess_pil_for_vggt(left_frame)    # (3, H, W)
+        right_tensor = self.preprocess_pil_for_vggt(right_frame)  # (3, H, W)
+        # Stack: [K=2, C, H, W] → [B=1, F=1, K=2, C, H, W]
+        env_obv = torch.stack([left_tensor, right_tensor], dim=0)  # (2, 3, H, W)
+        env_obv = env_obv.unsqueeze(0).unsqueeze(0)  # (1, 1, 2, 3, H, W)
+        return env_obv
+
+    @staticmethod
+    def _slice_action(action, start_frame: int, num_frames: int):
+        """Recursively slice action tensors along the frame dimension (dim=1)."""
+        if isinstance(action, torch.Tensor):
+            return action[:, start_frame:start_frame + num_frames]
+        if isinstance(action, dict):
+            return {k: WanVideoPipeline._slice_action(v, start_frame, num_frames)
+                    for k, v in action.items()}
+        return action
+
+    @torch.no_grad()
+    def autoregressive_generate(
+        self,
+        left_input_image: Image.Image,
+        right_input_image: Image.Image,
+        action: dict,
+        env_obv: torch.Tensor,
+        num_chunks: int = 2,
+        frames_per_chunk: int = 81,
+        seed: int = 0,
+        height: int = 480,
+        width: int = 480,
+        num_inference_steps: int = 50,
+        tiled: bool = False,
+        tile_size: Optional[tuple[int, int]] = (30, 52),
+        tile_stride: Optional[tuple[int, int]] = (15, 26),
+        sigma_shift: Optional[float] = 5.0,
+        progress_bar_cmd=tqdm,
+    ) -> tuple[List, List]:
+        """Autoregressive multi-chunk generation for left and right views.
+
+        Generates ``num_chunks`` video chunks sequentially.  Between chunks the
+        Global State Encoder is updated using the last generated frames from
+        both views.
+
+        Args:
+            left_input_image: First frame of the left view (PIL Image).
+            right_input_image: First frame of the right view (PIL Image).
+            action: Full action dict covering all chunks.  Tensors have shape
+                ``[B, total_frames, ...]`` where
+                ``total_frames >= num_chunks * (frames_per_chunk - 1) + 1``.
+            env_obv: Initial environment observation ``[B, F, K, C, H, W]``.
+            num_chunks: Number of chunks to generate autoregressively.
+            frames_per_chunk: Number of frames per chunk (default 81).
+
+        Returns:
+            (left_frames, right_frames): Two lists of numpy/PIL frames.
+        """
+        all_left: List = []
+        all_right: List = []
+        current_env_obv = env_obv
+        cur_left_img = left_input_image
+        cur_right_img = right_input_image
+
+        for chunk_idx in range(num_chunks):
+            # --- Slice actions for this chunk ---
+            if chunk_idx == 0:
+                start = 0
+            else:
+                start = chunk_idx * (frames_per_chunk - 1)
+            chunk_action = self._slice_action(action, start, frames_per_chunk)
+
+            print(f"[AR chunk {chunk_idx}/{num_chunks}] action frames {start}–{start + frames_per_chunk - 1}")
+
+            # --- Generate left view ---
+            left_frames = self.__call__(
+                input_image=cur_left_img,
+                action=chunk_action,
+                env_obv=current_env_obv,
+                seed=seed,
+                height=height,
+                width=width,
+                num_frames=frames_per_chunk,
+                num_inference_steps=num_inference_steps,
+                tiled=tiled,
+                tile_size=tile_size,
+                tile_stride=tile_stride,
+                sigma_shift=sigma_shift,
+                progress_bar_cmd=progress_bar_cmd,
+            )
+
+            # --- Generate right view ---
+            right_frames = self.__call__(
+                input_image=cur_right_img,
+                action=chunk_action,
+                env_obv=current_env_obv,
+                seed=seed,
+                height=height,
+                width=width,
+                num_frames=frames_per_chunk,
+                num_inference_steps=num_inference_steps,
+                tiled=tiled,
+                tile_size=tile_size,
+                tile_stride=tile_stride,
+                sigma_shift=sigma_shift,
+                progress_bar_cmd=progress_bar_cmd,
+            )
+
+            # --- Collect frames (skip overlap for chunk > 0) ---
+            if chunk_idx == 0:
+                all_left.extend(left_frames)
+                all_right.extend(right_frames)
+            else:
+                all_left.extend(left_frames[1:])
+                all_right.extend(right_frames[1:])
+
+            # --- Update state for next chunk ---
+            if chunk_idx < num_chunks - 1:
+                cur_left_img = left_frames[-1]
+                cur_right_img = right_frames[-1]
+
+                current_env_obv = self._build_env_obv_from_pil(
+                    cur_left_img, cur_right_img,
+                ).to(self.device, dtype=self.torch_dtype)
+
+        return all_left, all_right
 
 class WanVideoUnit_ShapeChecker(PipelineUnit):
     def __init__(self):
