@@ -173,7 +173,7 @@ This repository contains both software code and data/assets under separate licen
 - **Code** (training scripts, models, inference tools): Licensed under [Apache-2.0](LICENCE). Free for research and commercial use.
 - **Data & Model Weights** (datasets, checkpoints, pre-trained weights): Licensed under [CC BY-NC 4.0](LICENCE).
   - ✅ **Allowed**: Academic research, education, non-commercial projects
-  - ❌ **Prohibited**: Commercial products, cloud API services, integration into revenue-generating applications
+  - ❌ **Prohibited**: Commercial products
   - 📧 **Commercial licensing**: Contact wuhaoyu556@connect.hku.hk
 
 ## 📜 Citation
